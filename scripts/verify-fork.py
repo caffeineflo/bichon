@@ -12,9 +12,10 @@ def run(*args, cwd=None, env=None):
 
 
 def main():
+    run('python3', '-m', 'unittest', 'discover', '-s', 'scripts/tests')
     run('pnpm', 'install', '--frozen-lockfile', cwd='web')
     run('pnpm', 'run', 'build', cwd='web')
-    run('pnpm', 'exec', 'eslint', 'src/routes/(auth)/oidc-callback.tsx', cwd='web')
+    run('pnpm', 'exec', 'eslint', 'src/routes/(auth)/oidc-callback.tsx', 'src/features/settings/mfa/index.tsx', cwd='web')
     run('pnpm', 'exec', 'vitest', 'run', 'src/features/auth/__tests__/schema.test.ts', cwd='web')
     with tempfile.TemporaryDirectory(prefix='bichon-fork-check-') as data:
         env = {**os.environ, 'BICHON_ROOT_DIR': data}
