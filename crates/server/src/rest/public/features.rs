@@ -23,12 +23,14 @@ use serde::Serialize;
 struct FeaturesResponse {
     edition: &'static str,
     version: String,
+    sso_enabled: bool,
 }
 
 #[handler]
 pub async fn get_features() -> impl IntoResponse {
     Json(FeaturesResponse {
         edition: "community",
+        sso_enabled: super::oidc::enabled(),
         version: env!("CARGO_PKG_VERSION").to_string(),
     })
 }

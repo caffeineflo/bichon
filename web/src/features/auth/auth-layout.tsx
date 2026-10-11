@@ -63,6 +63,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           <p className='text-sm text-muted-foreground'>{description}</p>
         </div>
         <div className='w-full max-w-[400px]'>{children}</div>
+        <a href={resolveApiUrl('/api/source')} target='_blank' rel='noreferrer' className='text-xs text-muted-foreground underline'>
+          Source code (AGPL)
+        </a>
       </div>
 
       {/* Branding panel (desktop only) */}

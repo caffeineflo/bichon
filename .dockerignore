@@ -1,0 +1,9 @@
+.git
+fharr
+target
+web/node_modules
+web/dist
+web/.tanstack
+web/*.tsbuildinfo
+**/.env
+**/*.log

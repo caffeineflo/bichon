@@ -1,0 +1,83 @@
+name: Propose upstream updates
+
+on:
+  schedule:
+    - cron: '17 8 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'caffeineflo/bichon'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      candidates: ${{ steps.sync.outputs.candidates }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - id: sync
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/sync-upstream.py
+  verify:
+    needs: prepare
+    if: needs.prepare.outputs.candidates != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        candidate: ${{ fromJSON(needs.prepare.outputs.candidates) }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ matrix.candidate.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install pinned toolchains
+        run: |
+          rustup toolchain install 1.95.0 --profile minimal --component clippy
+          corepack enable
+          corepack prepare pnpm@10.23.0 --activate
+      - name: Validate candidate without write credentials
+        run: python3 scripts/verify-fork.py
+  report:
+    needs: [prepare, verify]
+    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.candidates != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Record the conservative result on candidate commits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CANDIDATES: ${{ needs.prepare.outputs.candidates }}
+          RESULT: ${{ needs.verify.result }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          for candidate in json.loads(os.environ['CANDIDATES']):
+              sha = candidate['sha']
+              if not re.fullmatch(r'[0-9a-f]{40}', sha):
+                  raise RuntimeError('Invalid candidate SHA')
+              state = 'success' if os.environ['RESULT'] == 'success' else 'failure'
+              subprocess.run([
+                  'gh', 'api', '--method', 'POST',
+                  'repos/' + os.environ['GITHUB_REPOSITORY'] + '/statuses/' + sha,
+                  '-f', 'state=' + state, '-f', 'context=fork/upstream-validation',
+                  '-f', 'description=Scheduled fork regression checks: ' + state,
+                  '-f', 'target_url=' + os.environ['GITHUB_SERVER_URL'] + '/' + os.environ['GITHUB_REPOSITORY'] + '/actions/runs/' + os.environ['GITHUB_RUN_ID'],
+                  check=True,
+              )
+          PY

@@ -58,7 +58,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
   const { search } = useLocation();
   const redirect = toSearchParams(search).get('redirect') || '/';
 
-  const { isPro, ssoEnabled, ldapEnabled } = useEdition()
+  const { ssoEnabled, ldapEnabled } = useEdition()
   // Enterprise LDAP: the form authenticates against the directory (default
   // when enabled); a link lets the user fall back to their local account.
   const [loginMode, setLoginMode] = useState<'local' | 'ldap'>(
@@ -227,7 +227,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                   {t('auth.login')}
                 </Button>
 
-                {isPro && (
+                {ssoEnabled && (
                   <Button
                     variant='outline'
                     className='mt-2 w-full'

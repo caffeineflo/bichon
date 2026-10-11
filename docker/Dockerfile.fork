@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (c) 2026 Florian Harr. Added October 10, 2026.
+FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS web
+WORKDIR /source/web
+RUN corepack enable && corepack prepare pnpm@10.23.0 --activate
+COPY web/package.json web/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY web/ ./
+RUN pnpm run build
+
+FROM rust:1.95-bookworm@sha256:6258907abe69656e41cd992e0b705cdcfabcbbe3db374f92ed2d47121282d4a1 AS rust
+ARG SOURCE_REVISION
+ENV BICHON_SOURCE_REVISION=${SOURCE_REVISION}
+ENV BICHON_PREBUILT_WEB=1
+WORKDIR /source
+COPY Cargo.toml Cargo.lock ./
+COPY crates/ ./crates/
+COPY --from=web /source/web/dist ./web/dist
+RUN cargo build --locked --release -p bichon-server -p bichon-cli -p bichon-admin
+
+FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
+ARG SOURCE_REVISION
+LABEL org.opencontainers.image.source="https://github.com/caffeineflo/bichon"
+LABEL org.opencontainers.image.revision=${SOURCE_REVISION}
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
+COPY --from=rust /source/target/release/bichon-server /opt/bichon/bichon-server
+COPY --from=rust /source/target/release/bichon-cli /source/target/release/bichon-admin /usr/local/bin/
+COPY LICENSE /opt/bichon/LICENSE
+WORKDIR /data
+EXPOSE 15630
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD curl -fs http://localhost:${BICHON_HTTP_PORT:-15630}/api/status || exit 1
+CMD ["/opt/bichon/bichon-server"]
