@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   prepare:
-    if: github.repository == 'caffeineflo/bichon'
+    if: github.repository == 'caffeineflo/bichon-temporary-oidc'
     runs-on: ubuntu-latest
     permissions:
       contents: write

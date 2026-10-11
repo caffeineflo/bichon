@@ -295,7 +295,7 @@ pub async fn source() -> Response {
         .header(
             "Location",
             format!(
-                "https://github.com/caffeineflo/bichon/tree/{}",
+                "https://github.com/caffeineflo/bichon-temporary-oidc/tree/{}",
                 option_env!("BICHON_SOURCE_REVISION").unwrap_or("main")
             ),
         )

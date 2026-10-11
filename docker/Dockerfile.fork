@@ -20,7 +20,7 @@ RUN cargo build --locked --release -p bichon-server -p bichon-cli -p bichon-admi
 
 FROM debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
 ARG SOURCE_REVISION
-LABEL org.opencontainers.image.source="https://github.com/caffeineflo/bichon"
+LABEL org.opencontainers.image.source="https://github.com/caffeineflo/bichon-temporary-oidc"
 LABEL org.opencontainers.image.revision=${SOURCE_REVISION}
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 RUN apt-get update && apt-get install --no-install-recommends -y ca-certificates curl && rm -rf /var/lib/apt/lists/*
