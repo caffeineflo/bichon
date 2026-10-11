@@ -2,7 +2,7 @@
     <img width="200" height="175" alt="Bichon Logo" src="https://github.com/user-attachments/assets/06dc3b67-7d55-4a93-a3de-8b90951c575b" />
 </p>
 
-<H1 align="center">BICHON</H1>
+<H1 align="center">BICHON - TEMPORARY OIDC FORK</H1>
 
 <p align="center">
   <a href="https://github.com/rustmailer/bichon/stargazers">
@@ -39,6 +39,16 @@
 
 <p align="center">A self-hosted email archiving server built in Rust. Download emails from IMAP accounts, builds a full-text search index, and serves a REST API with an embedded WebUI. Purpose-built for long-term preservation, unified cross-account search, and programmatic access to archived email.</p>
 
+## Why this temporary fork exists
+
+We use [Bichon](https://github.com/rustmailer/bichon) to preserve and search our email archives, and it's a great app. This fork adds native OIDC so we can sign in through [Pocket ID](https://github.com/pocket-id/pocket-id). We use it ourselves and have tested Pocket ID passkey sign-in with the fork.
+
+We're maintaining this fork only until Bichon Pro is released with OIDC that works with Pocket ID, or equivalent OIDC support becomes available in an official upstream release. Until then, we intend to keep it up to date with upstream by reviewing and merging upstream changes. Once that official option is available, we plan to move back to upstream.
+
+**Please support Bichon and its author.** You can [support the author directly](https://buymeacoffee.com/rustmailer), star [Bichon](https://github.com/rustmailer/bichon), or contribute fixes. Please consider the official paid edition when it's available and meets your needs. We've submitted our attachment reconstruction fix [upstream](https://github.com/rustmailer/bichon/pull/375).
+
+For this fork's OIDC setup, container build, attachment recovery, and upstream update workflow, see [FORK.md](FORK.md). The installation examples below describe upstream Bichon; use the fork guide to run this version with OIDC.
+
 <p align="center">
   <a href="https://www.youtube.com/watch?v=fMlayXo3Bo0">
     <img src="https://img.youtube.com/vi/fMlayXo3Bo0/maxresdefault.jpg" alt="Watch the demo"/>
@@ -52,6 +62,7 @@
 
 ## Contents
 
+- [Why this temporary fork exists](#why-this-temporary-fork-exists)
 - [Features](#features)
 - [Quick Start](#quick-start)
   - [Docker (Recommended)](#docker-recommended)

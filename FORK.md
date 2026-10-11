@@ -1,4 +1,8 @@
-# Maintained community fork
+# Bichon - temporary OIDC fork
+
+We use and have tested this fork's OIDC integration with [Pocket ID](https://github.com/pocket-id/pocket-id), including passkey sign-in. We intend to keep it current with [upstream Bichon](https://github.com/rustmailer/bichon) until Bichon Pro or another official upstream release provides OIDC that works with Pocket ID. At that point, we plan to move back to the official release.
+
+Bichon is a great app, and its author deserves support. You can [support the author directly](https://buymeacoffee.com/rustmailer) and choose the official paid edition when it's available and meets your needs. See the [README](README.md#why-this-temporary-fork-exists) for the purpose of this fork.
 
 This fork adds native OIDC and fixes lossless attachment reconstruction on Bichon 2.1.1. We added these changes on October 10, 2026. The source remains available under the upstream AGPL license, and the UI links to the deployed source revision through `/api/source`.
 
@@ -36,7 +40,7 @@ The focused upstream fix is https://github.com/rustmailer/bichon/pull/375.
 
 Use Rust 1.95.0, Node 24, and pnpm 10.23.0. `python3 scripts/verify-fork.py` runs the affected attachment, metadata, OIDC, server adapter, and login checks. The upstream full suite includes external IMAP accounts and non-portable fixtures; a passing focused run doesn't claim that entire suite passed.
 
-Build the container with `docker build -f docker/Dockerfile.fork --build-arg SOURCE_REVISION=<full-commit-sha> -t bichon-fork:<full-commit-sha> .`. The multi-stage build compiles the UI from the same source and embeds it in the Rust server. Main branch CI publishes `ghcr.io/caffeineflo/bichon:<full-commit-sha>`. Pin deployment to the image digest after archive verification.
+Build the container with `docker build -f docker/Dockerfile.fork --build-arg SOURCE_REVISION=<full-commit-sha> -t bichon-fork:<full-commit-sha> .`. The multi-stage build compiles the UI from the same source and embeds it in the Rust server. Main branch CI publishes `ghcr.io/caffeineflo/bichon:<full-commit-sha>`. We retain that image path after renaming the repository to `bichon-temporary-oidc` so existing deployments keep working. Pin deployment to the image digest after archive verification.
 
 ## Upstream updates
 
