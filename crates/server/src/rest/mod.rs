@@ -61,6 +61,7 @@ use super::error::ApiErrorResponse;
 /// Build the community route tree. Pro/Enterprise servers can call this
 /// and then add their own routes before passing the tree to the server.
 pub fn build_routes() -> impl Endpoint {
+    public::oidc::initialize();
     let api_service = create_openapi_service()
         .summary("A lightweight, high-performance Rust email archiver with WebUI");
 
@@ -116,6 +117,10 @@ pub fn build_routes() -> impl Endpoint {
         .nest("/api/v1/features", get(get_features))
         .nest("/api/status", get(get_status))
         .nest("/api/login", post(login))
+        .at("/api/auth/oidc/login", get(public::oidc::login))
+        .at("/api/auth/oidc/callback", get(public::oidc::callback))
+        .at("/api/auth/oidc/session", post(public::oidc::session))
+        .at("/api/source", get(public::oidc::source))
         .nest("/api/auth/mfa/verify", post(mfa_verify))
         .at(
             "/api/v1/exports/download/:ticket",

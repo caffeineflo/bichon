@@ -17,6 +17,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+import { resolveApiUrl } from '@/api/branding/api';
 import React, { useEffect, useState } from "react";
 import { GitHubLogoIcon } from "@radix-ui/react-icons";
 import { Star } from "lucide-react";
@@ -58,10 +59,10 @@ function setCachedStars(repo: string, stars: number) {
 }
 
 export const GithubLinkButton: React.FC<GithubLinkButtonProps> = ({
-  href = "https://github.com/rustmailer/bichon",
-  repo = "rustmailer/bichon",
+  href = resolveApiUrl("/api/source"),
+  repo = "caffeineflo/bichon",
   size = 18,
-  title = "View on GitHub",
+  title = "Source code (AGPL)",
 }) => {
   const [stars, setStars] = useState<number | null>(() => getCachedStars(repo));
 

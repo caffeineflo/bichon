@@ -16,7 +16,15 @@ fn main() -> Result<()> {
     println!("cargo:rustc-env=GIT_HASH={}", git_hash);
 
     // Build frontend assets
-    build_frontend();
+    if std::env::var_os("CARGO_FEATURE_EMBED_WEB").is_some() {
+        println!("cargo:rerun-if-env-changed=BICHON_PREBUILT_WEB");
+        if std::env::var("BICHON_PREBUILT_WEB").as_deref() == Ok("1") {
+            assert!(std::path::Path::new("../../web/dist/index.html").is_file(), "Prebuilt web assets are missing");
+            println!("cargo:rerun-if-changed=../../web/dist");
+        } else {
+            build_frontend();
+        }
+    }
 
     Ok(())
 }
