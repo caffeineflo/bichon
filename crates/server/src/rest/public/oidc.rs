@@ -3,13 +3,19 @@
 // Added October 10, 2026. Adapter to Bichon's existing users and sessions.
 
 use bichon_core::{
+    ext::event_bus::{emit, Event},
     settings::cli::SETTINGS,
     token::AccessTokenModel,
     users::{LoginResult, UserModel},
+    utils::rate_limit::LOGIN_RATE_LIMITER_MANAGER,
 };
 use bichon_oidc::{Config, Flow};
 use http::StatusCode;
-use poem::{handler, web::Query, IntoResponse, Request, Response};
+use poem::{
+    handler,
+    web::{Query, RealIp},
+    FromRequest, IntoResponse, Request, Response,
+};
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -98,10 +104,30 @@ fn failure(status: StatusCode, message: &'static str) -> Response {
 }
 
 #[handler]
-pub async fn login() -> Response {
+pub async fn login(req: &Request) -> Response {
     let Some(config) = CONFIG.as_ref() else {
         return failure(StatusCode::NOT_FOUND, "OIDC is disabled.");
     };
+    login_with_config(req, config).await
+}
+
+async fn login_with_config(req: &Request, config: &Config) -> Response {
+    let ip = RealIp::from_request_without_body(req)
+        .await
+        .ok()
+        .and_then(|ip| ip.0);
+    if let Some(ip) = ip {
+        if LOGIN_RATE_LIMITER_MANAGER
+            .check(&ip.to_string())
+            .await
+            .is_err()
+        {
+            return failure(
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many login attempts. Please try again later.",
+            );
+        }
+    }
     let (url, flow) = match config.authorize().await {
         Ok(result) => result,
         Err(_) => {
@@ -218,11 +244,15 @@ pub async fn session(req: &Request) -> Response {
     let Some(config) = CONFIG.as_ref() else {
         return failure(StatusCode::NOT_FOUND, "OIDC is disabled.");
     };
+    exchange_session(req, &config.redirect_origin()).await
+}
+
+async fn exchange_session(req: &Request, origin: &str) -> Response {
     if req
         .headers()
         .get(http::header::ORIGIN)
         .and_then(|value| value.to_str().ok())
-        != Some(config.redirect_origin().as_str())
+        != Some(origin)
     {
         return failure(
             StatusCode::FORBIDDEN,
@@ -242,6 +272,10 @@ pub async fn session(req: &Request) -> Response {
             "Sign-in has expired or was already used.",
         );
     };
+    let ip = RealIp::from_request_without_body(req)
+        .await
+        .ok()
+        .and_then(|ip| ip.0);
     let result = (|| {
         let user = UserModel::find(user_id)?.ok_or_else(|| {
             bichon_core::raise_error!(
@@ -252,7 +286,14 @@ pub async fn session(req: &Request) -> Response {
         let (token, challenge) = if user.totp_enabled {
             (None, Some(AccessTokenModel::new_mfa_challenge(user.id)?))
         } else {
-            (Some(AccessTokenModel::reset_webui_token(user.id)?), None)
+            let token = AccessTokenModel::reset_webui_token(user.id)?;
+            if let Some(ip) = ip {
+                emit(Event::UserLoggedIn {
+                    user: user.username.clone(),
+                    ip,
+                });
+            }
+            (Some(token), None)
         };
         Ok::<_, bichon_core::error::BichonError>(LoginResult {
             success: true,
@@ -305,6 +346,128 @@ pub async fn source() -> Response {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bichon_core::database::{manager::DB_MANAGER, upsert_impl};
+
+    fn handoff(totp_enabled: bool) -> (String, UserModel) {
+        let user = UserModel {
+            id: uuid::Uuid::new_v4().as_u128() as u64,
+            username: format!("oidc-test-{}", uuid::Uuid::new_v4()),
+            totp_enabled,
+            ..Default::default()
+        };
+        upsert_impl(DB_MANAGER.db(), user.clone()).unwrap();
+        let key = uuid::Uuid::new_v4().to_string();
+        SESSIONS
+            .lock()
+            .unwrap()
+            .insert(
+                key.clone(),
+                user.id,
+                Instant::now(),
+                Duration::from_secs(60),
+            )
+            .unwrap();
+        (key, user)
+    }
+
+    fn request(key: &str, origin: &str) -> Request {
+        Request::builder()
+            .method(http::Method::POST)
+            .header("Origin", origin)
+            .header("Cookie", format!("{SESSION_COOKIE}={key}"))
+            .header("X-Forwarded-For", "192.0.2.10")
+            .finish()
+    }
+
+    #[tokio::test]
+    async fn oidc_requires_local_totp_before_issuing_an_access_token() {
+        let (key, _) = handoff(true);
+        let response =
+            exchange_session(&request(&key, "https://app.example"), "https://app.example").await;
+        let result: LoginResult = response.into_body().into_json().await.unwrap();
+        assert!(
+            result.success
+                && result.mfa_required
+                && result.mfa_challenge.is_some()
+                && result.access_token.is_none()
+        );
+    }
+
+    #[tokio::test]
+    async fn session_handoff_cannot_be_replayed() {
+        let (key, _) = handoff(false);
+        let req = request(&key, "https://app.example");
+        assert_eq!(exchange_session(&req, "https://app.example").await.status(), StatusCode::OK);
+        assert_eq!(
+            exchange_session(&req, "https://app.example").await.status(),
+            StatusCode::UNAUTHORIZED
+        );
+    }
+
+    #[tokio::test]
+    async fn wrong_origin_does_not_consume_the_session_handoff() {
+        let (key, _) = handoff(false);
+        let wrong = exchange_session(
+            &request(&key, "https://other.example"),
+            "https://app.example",
+        )
+        .await;
+        assert_eq!(wrong.status(), StatusCode::FORBIDDEN);
+        let correct =
+            exchange_session(&request(&key, "https://app.example"), "https://app.example").await;
+        assert_eq!(correct.status(), StatusCode::OK);
+    }
+
+    #[tokio::test]
+    async fn exhausted_login_quota_is_rejected_before_provider_discovery() {
+        let ip = "192.0.2.11";
+        for _ in 0..10 {
+            LOGIN_RATE_LIMITER_MANAGER.check(ip).await.unwrap();
+        }
+        let config = Config::new(
+            "https://issuer.invalid",
+            "test",
+            None,
+            "https://app.example/callback",
+            std::collections::BTreeMap::from([("subject".into(), "user".into())]),
+        )
+        .unwrap();
+        let req = Request::builder().header("X-Forwarded-For", ip).finish();
+        assert_eq!(
+            login_with_config(&req, &config).await.status(),
+            StatusCode::TOO_MANY_REQUESTS
+        );
+    }
+
+    #[tokio::test]
+    async fn login_audit_event_is_emitted_only_after_an_access_token_is_issued() {
+        use bichon_core::ext::event_bus::{set_event_bus, EventBus};
+        use std::sync::Arc;
+        struct Recorder(Arc<Mutex<Vec<String>>>);
+        impl EventBus for Recorder {
+            fn emit(&self, event: Event) {
+                if let Event::UserLoggedIn { user, .. } = event {
+                    self.0.lock().unwrap().push(user);
+                }
+            }
+        }
+        let events = Arc::new(Mutex::new(Vec::new()));
+        set_event_bus(Box::new(Recorder(events.clone())));
+        let (totp_key, totp_user) = handoff(true);
+        let (key, user) = handoff(false);
+        exchange_session(
+            &request(&totp_key, "https://app.example"),
+            "https://app.example",
+        )
+        .await;
+        exchange_session(&request(&key, "https://app.example"), "https://app.example").await;
+        let recorded = events.lock().unwrap();
+        let relevant: Vec<_> = recorded
+            .iter()
+            .filter(|name| **name == user.username || **name == totp_user.username)
+            .collect();
+        assert_eq!(relevant, vec![&user.username]);
+    }
 
     #[test]
     fn pending_sign_in_can_only_be_consumed_once() {

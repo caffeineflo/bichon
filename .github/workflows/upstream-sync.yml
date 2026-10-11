@@ -21,6 +21,7 @@ jobs:
       pull-requests: write
     outputs:
       candidates: ${{ steps.sync.outputs.candidates }}
+      conflicts: ${{ steps.sync.outputs.conflicts }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -54,7 +55,7 @@ jobs:
         run: python3 scripts/verify-fork.py
   report:
     needs: [prepare, verify]
-    if: always() && needs.prepare.result == 'success' && needs.prepare.outputs.candidates != '[]'
+    if: always() && needs.prepare.result == 'success' && (needs.prepare.outputs.candidates != '[]' || needs.prepare.outputs.conflicts != '[]')
     runs-on: ubuntu-latest
     permissions:
       statuses: write
@@ -63,6 +64,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CANDIDATES: ${{ needs.prepare.outputs.candidates }}
+          CONFLICTS: ${{ needs.prepare.outputs.conflicts }}
           RESULT: ${{ needs.verify.result }}
         run: |
           python3 - <<'PY'
@@ -80,4 +82,7 @@ jobs:
                   '-f', 'target_url=' + os.environ['GITHUB_SERVER_URL'] + '/' + os.environ['GITHUB_REPOSITORY'] + '/actions/runs/' + os.environ['GITHUB_RUN_ID'],
                   check=True,
               )
+          conflicts = json.loads(os.environ['CONFLICTS'])
+          if conflicts:
+              raise RuntimeError('Upstream candidates require manual conflict resolution: ' + json.dumps(conflicts))
           PY

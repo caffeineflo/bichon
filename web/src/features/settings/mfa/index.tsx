@@ -47,7 +47,7 @@ interface EnrollState {
 export function MfaSettings() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const { ssoEnabled } = useEdition()
+  const { isPro, ssoEnabled } = useEdition()
 
   const { data: status } = useQuery({
     queryKey: ['mfa-status'],
@@ -163,7 +163,7 @@ export function MfaSettings() {
         </p>
       </div>
 
-      {ssoEnabled && (
+      {isPro && ssoEnabled && (
         <Alert>
           <Info size={16} className='mr-2' />
           <AlertDescription>

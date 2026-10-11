@@ -44,7 +44,7 @@ Build the container with `docker build -f docker/Dockerfile.fork --build-arg SOU
 
 ## Upstream updates
 
-The daily `Propose upstream updates` workflow checks upstream `main` and the latest release. Each moved ref gets a separate merge candidate PR; conflicts fail the run with the files needing resolution. The workflow leaves `main` and deployed data untouched.
+The daily `Propose upstream updates` workflow checks upstream `main` and the latest release. Each moved ref gets a separate merge candidate PR. A conflict in one candidate doesn't block the other; the final report fails the run with the files needing resolution. Existing candidate commits stay unchanged until upstream or the fork base moves. The workflow leaves `main` and deployed data untouched.
 
 Candidate verification runs in a separate job without write credentials. Because GitHub's workflow token doesn't trigger another workflow when it creates a PR, this workflow records its own `fork/upstream-validation` status on the candidate commit. A failure in either candidate conservatively marks both candidates failed. The PRs stay drafts for review.
 
