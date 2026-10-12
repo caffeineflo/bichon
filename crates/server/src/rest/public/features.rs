@@ -24,13 +24,16 @@ struct FeaturesResponse {
     edition: &'static str,
     version: String,
     sso_enabled: bool,
+    oidc_only: bool,
 }
 
 #[handler]
 pub async fn get_features() -> impl IntoResponse {
+    let oidc_enabled = super::oidc::enabled();
     Json(FeaturesResponse {
         edition: "community",
-        sso_enabled: super::oidc::enabled(),
+        sso_enabled: oidc_enabled,
+        oidc_only: oidc_enabled,
         version: env!("CARGO_PKG_VERSION").to_string(),
     })
 }

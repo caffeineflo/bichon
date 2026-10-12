@@ -44,7 +44,7 @@ export function SignOutDialog({ open, onOpenChange }: SignOutDialogProps) {
   const goToSignIn = (currentPath: string) => {
     navigate({
       to: '/sign-in',
-      search: { redirect: currentPath },
+      search: { redirect: currentPath, oidc: 'manual' },
       replace: true,
     })
   }

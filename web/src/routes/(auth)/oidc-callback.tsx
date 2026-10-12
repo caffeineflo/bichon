@@ -106,7 +106,9 @@ function OidcCallback() {
         {error && (
           <Button
             variant='outline'
-            onClick={() => void navigate({ to: '/sign-in' })}
+            onClick={() =>
+              void navigate({ to: '/sign-in', search: { oidc: 'manual' } })
+            }
           >
             Return to sign-in
           </Button>
