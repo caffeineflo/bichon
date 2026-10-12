@@ -1,10 +1,11 @@
-import axiosInstance from '@/api/axiosInstance'
 import { useQuery } from '@tanstack/react-query'
+import axiosInstance from '@/api/axiosInstance'
 
 export interface EditionInfo {
   edition: 'community' | 'pro' | 'enterprise'
   version: string
   sso_enabled: boolean
+  oidc_only?: boolean
   ldap_enabled: boolean
   siem_enabled: boolean
   approval_enabled: boolean
@@ -16,7 +17,7 @@ async function fetchEdition(): Promise<EditionInfo> {
 }
 
 export function useEdition() {
-  const { data } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     queryKey: ['edition'],
     queryFn: fetchEdition,
     staleTime: Infinity,
@@ -29,6 +30,10 @@ export function useEdition() {
     edition: data?.edition ?? 'community',
     version: data?.version ?? '',
     ssoEnabled: data?.sso_enabled ?? false,
+    oidcOnly: data?.oidc_only ?? false,
+    isPending,
+    isError,
+    refetch,
     ldapEnabled: data?.ldap_enabled ?? false,
     siemEnabled: data?.siem_enabled ?? false,
     approvalEnabled: data?.approval_enabled ?? false,

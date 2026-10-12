@@ -22,7 +22,9 @@ BICHON_OIDC_USER_MAPPING={"stable-provider-subject":"existing-bichon-username"}
 
 Register the exact redirect URL with your provider. For a base path such as `/archive`, include it in both Bichon's base URL and the redirect URL. Public clients can omit the client secret. Keep secrets out of Compose source and use a protected `.env` file or your deployment's secret store.
 
-The flow uses authorization code with PKCE S256, state, nonce, HTTPS discovery, and signed ID token validation. Provider keys refresh on each flow. Only explicitly mapped subjects can sign in, and their local Bichon user must already exist. We don't link users by email or create administrators automatically. Local login remains available, and an enabled local TOTP requirement still applies after OIDC.
+The flow uses authorization code with PKCE S256, state, nonce, HTTPS discovery, and signed ID token validation. Provider keys refresh on each flow. Only explicitly mapped subjects can sign in, and their local Bichon user must already exist. We don't link users by email or create administrators automatically. An enabled local TOTP requirement still applies after OIDC.
+
+When OIDC is configured, it is the only sign-in path: the login page starts SSO automatically and the server rejects password login. After signing out or returning from a failed session exchange, the page waits for you to choose "Sign in with SSO" so it doesn't immediately sign you back in. Automatic starts also pause for one minute in the same browser tab to stop repeated API rejections from looping through the provider; you can retry explicitly at any time. Without OIDC configuration, local login works as before. If you need operator recovery, unset `BICHON_OIDC_ISSUER` and restart the server to restore local login; there is no browser password bypass.
 
 Sign-in state expires after five minutes. The browser-bound session handoff is one-use and expires after one minute; no Bichon bearer token appears in a redirect URL. These transient flows live in memory, so a restart requires a new sign-in and this adapter assumes one server instance.
 

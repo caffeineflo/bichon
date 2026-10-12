@@ -15,8 +15,8 @@ def main():
     run('python3', '-m', 'unittest', 'discover', '-s', 'scripts/tests')
     run('pnpm', 'install', '--frozen-lockfile', cwd='web')
     run('pnpm', 'run', 'build', cwd='web')
-    run('pnpm', 'exec', 'eslint', 'src/routes/(auth)/oidc-callback.tsx', 'src/features/settings/mfa/index.tsx', cwd='web')
-    run('pnpm', 'exec', 'vitest', 'run', 'src/features/auth/__tests__/schema.test.ts', cwd='web')
+    run('pnpm', 'exec', 'eslint', 'src/routes/(auth)/oidc-callback.tsx', 'src/features/settings/mfa/index.tsx', 'src/features/auth/index.tsx', 'src/hooks/use-edition.ts', 'src/components/sign-out-dialog.tsx', 'src/features/auth/__tests__/sign-in.test.tsx', cwd='web')
+    run('pnpm', 'exec', 'vitest', 'run', 'src/features/auth/__tests__', cwd='web')
     with tempfile.TemporaryDirectory(prefix='bichon-fork-check-') as data:
         env = {**os.environ, 'BICHON_ROOT_DIR': data}
         cargo = ['cargo', '+1.95.0']
@@ -25,6 +25,7 @@ def main():
         for test_filter in ('envelope::extractor::test', 'attachment_storage_tests', 'message::content::tests'):
             run(*cargo, 'test', '--locked', '-p', 'bichon-core', '--lib', test_filter, '--', '--test-threads=1', env=env)
         run(*cargo, 'test', '--locked', '-p', 'bichon-server', '--no-default-features', 'rest::public::oidc::tests', env=env)
+        run(*cargo, 'test', '--locked', '-p', 'bichon-server', '--no-default-features', '--test', 'oidc_only', '--test', 'oidc_invalid', '--test', 'password_login', env=env)
         run(*cargo, 'check', '--locked', '-p', 'bichon-admin', env=env)
         run(*cargo, 'check', '--locked', '-p', 'bichon-server', env=env)
 

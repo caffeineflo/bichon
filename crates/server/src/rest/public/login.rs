@@ -37,6 +37,12 @@ pub struct LoginPayload {
 /// on successful authentication.
 #[handler]
 pub async fn login(payload: Json<LoginPayload>, req: &Request) -> Response {
+    if super::oidc::enabled() {
+        return Response::builder()
+            .status(http::StatusCode::FORBIDDEN)
+            .header("Cache-Control", "no-store")
+            .body("Password sign-in is disabled. Sign in with your identity provider.");
+    }
     let login_username = payload.0.username.clone();
 
     let ip = RealIp::from_request_without_body(req)
