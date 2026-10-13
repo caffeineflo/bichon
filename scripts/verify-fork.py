@@ -20,6 +20,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix='bichon-fork-check-') as data:
         env = {**os.environ, 'BICHON_ROOT_DIR': data}
         cargo = ['cargo', '+1.95.0']
+        run(*cargo, 'test', '--locked', '-p', 'bichon-blob', env=env)
         run(*cargo, 'test', '--locked', '-p', 'bichon-oidc', env=env)
         run(*cargo, 'clippy', '--locked', '-p', 'bichon-oidc', '--all-targets', '--', '-D', 'warnings', env=env)
         for test_filter in ('envelope::extractor::test', 'attachment_storage_tests', 'message::content::tests'):

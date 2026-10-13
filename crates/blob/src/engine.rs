@@ -722,7 +722,8 @@ impl EngineShared {
                     seg_stats.total_bytes = stats.bytes_after;
                     seg_stats.deleted_bytes = 0;
                     seg_stats.deleted_ratio = 0.0;
-                    seg_stats.indexed_up_to_offset = stats.bytes_after;
+                    seg_stats.indexed_up_to_offset =
+                        stats.bytes_after + stats.entries_kept as u64 * ENTRY_HEADER_SIZE as u64;
                     seg_stats.sha256 = Some(stats.sha256);
                 }
                 inner.meta.save(&inner.root)?;
